@@ -1,0 +1,64 @@
+name: Deploy to GitHub Pages
+
+on:
+  # Deploys when YOU push to the default branch (CI builds + deploys; you do the pushes).
+  push:
+    branches: [feature/first-web-gl-push, main]
+  # Allow a manual run from the Actions tab too.
+  workflow_dispatch:
+
+# Least-privilege token for Pages deployment.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; don't cancel an in-progress production deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Configure Pages
+        id: pages
+        # Pages is already enabled (Settings → Pages → Source = "GitHub Actions").
+        # No `enablement: true` here — that input requires a non-default token and
+        # 403s with the built-in GITHUB_TOKEN. This step just exposes base_path.
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static export
+        run: npm run build
+        env:
+          # base_path is the repo sub-path (e.g. /3DWebGL), derived automatically.
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
