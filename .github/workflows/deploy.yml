@@ -1,9 +1,9 @@
 name: Deploy to GitHub Pages
 
 on:
-  # Deploys when YOU push to the default branch (CI builds + deploys; you do the pushes).
+  # Deploys when YOU push to main (CI builds + deploys; you do the pushes).
   push:
-    branches: [feature/first-web-gl-push, main]
+    branches: [main]
   # Allow a manual run from the Actions tab too.
   workflow_dispatch:
 
