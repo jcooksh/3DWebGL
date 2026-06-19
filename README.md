@@ -1,57 +1,105 @@
-# TRACK — scroll-paced WebGL starter
+# TRACK — scroll-paced WebGL run
 
-A minimal, working clone of the architecture behind [hirotos.com](https://www.hirotos.com/)'s
-**TRACK** demo: a scroll-driven WebGL "run" where one scroll scalar drives the
-camera, a running figure, and a DOM HUD (stopwatch + distance counter + quotes
-that surface as you earn them).
+A scroll-driven WebGL experience: a "runner of light" sprints down a neon
+corridor while a stopwatch, distance counter, and athlete quotes climb in sync.
+Everything — camera, runner, HUD — is driven by **one scroll scalar**, and
+reveals are paced to **distance travelled**, not viewport position.
 
-## Stack (mirrors what was found in TRACK's shipped bundle)
+Architecture and stack mirror the techniques observed on
+[hirotos.com](https://www.hirotos.com/)'s **TRACK** demo. Built from scratch; no
+assets are taken from that site.
 
-| Concern        | Choice |
-|----------------|--------|
-| Framework      | Next.js (App Router, **static export** → `out/`) |
-| 3D             | three.js + **react-three-fiber** + drei |
-| Post-processing| **@react-three/postprocessing** (Noise + Vignette only) |
-| Animation      | **GSAP** ScrollTrigger + **CustomEase** |
-| Smooth scroll  | **Lenis** |
-| State          | zustand (one scalar: `progress`) |
-| Hosting        | any static host / nginx — no server runtime, no Vercel needed |
+![TRACK preview](./preview.png)
 
-## Run it
+## Stack
+
+| Concern          | Choice |
+|------------------|--------|
+| Framework        | Next.js (App Router, **static export** → `out/`) |
+| 3D               | three.js · **react-three-fiber** · drei (`Instances`, `MeshReflectorMaterial`) |
+| Post-processing  | **@react-three/postprocessing** — Bloom · ChromaticAberration · Vignette · Noise |
+| Animation        | **GSAP** ScrollTrigger + **CustomEase** |
+| Smooth scroll    | **Lenis** |
+| State            | zustand (one scalar: `progress`) |
+| Type             | `next/font` — Anton (display) + JetBrains Mono |
+| Hosting          | any static host / nginx — no server runtime, no Vercel required |
+
+## Quick start
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000 — scroll to run
-npm run build        # static export to ./out
-npm start            # serve the built ./out locally
+npm run dev        # http://localhost:3000 — scroll to run
+npm run build      # static export → ./out
+npm start          # serve the built ./out locally
 ```
+
+Requires Node 18+.
 
 ## How it works
 
+```
+scroll ──▶ Lenis (smoothing) ──▶ GSAP ScrollTrigger ──▶ progress (0..1)
+                                                          │  zustand store
+                 ┌────────────────────────┬──────────────┴───────────────┐
+                 ▼                         ▼                              ▼
+          Rig (camera)              Spark + Corridor                 HUD (DOM)
+        chases the spark        scene scrubbed by distance      stopwatch · metres · quotes
+```
+
 1. **`components/ScrollController.jsx`** — Lenis smooths wheel/touch input; GSAP
    ScrollTrigger turns scroll position over a tall (`700vh`) container into a
-   `0..1` progress value and writes it to the zustand store.
-2. **`lib/store.js`** — the single source of truth. Read imperatively with
-   `useProgress.getState()` inside frame/rAF loops so nothing re-renders React.
+   `0..1` `progress` and writes it to the store.
+2. **`lib/store.js`** — single source of truth. Read imperatively with
+   `useProgress.getState()` inside frame/rAF loops, so per-frame updates never
+   re-render React.
 3. **`lib/ease.js`** — a bespoke **CustomEase** (`trackEase`) shapes how distance
    maps to motion. This is the "metronome" cadence knob.
-4. **`components/Rig.jsx` / `Runner.jsx`** — both read the same scalar each frame.
-   Stride cadence is tied to **distance**, not time — the defining TRACK trait.
+4. **`components/Rig.jsx` + `Spark.jsx`** — both read the same scalar each frame.
+   Stride bob and trail spacing are tied to **distance**, not time.
 5. **`components/HUD.jsx`** — DOM overlay updated from one rAF loop; stopwatch,
    distance, and distance-gated quotes all read the same scalar.
 
-## Make it yours
+## Project layout
 
-- **Real character:** drop a Blender-exported GLB with a baked `run` clip into
-  `public/models/` and follow the swap block commented in `components/Runner.jsx`
-  (`useGLTF` + `useAnimations`, scrub the clip time by distance).
-- **Pacing/feel:** edit the `trackEase` bezier in `lib/ease.js`.
+```
+app/
+  layout.jsx        fonts + metadata
+  page.jsx          renders <Experience/>
+  globals.css       HUD + type system
+components/
+  Experience.jsx    wires ScrollController + (client-only) Scene + HUD + scroll spacer
+  ScrollController  Lenis + GSAP ScrollTrigger → store
+  Scene.jsx         <Canvas>, lights, reflective floor, motes
+  Corridor.jsx      instanced emissive neon bars
+  Spark.jsx         runner-of-light orb + motion trail
+  Background.jsx    additive radial glow ("light at the end of the tunnel")
+  Rig.jsx           camera chase
+  PostFX.jsx        Bloom + ChromaticAberration + Vignette + grain
+  HUD.jsx           DOM stopwatch / distance / quotes
+lib/
+  store.js          zustand progress scalar
+  ease.js           CustomEase curve
+  constants.js      TRACK_LENGTH, STEP_FREQ, TOTAL_METERS
+```
+
+## Customize
+
+- **Real character:** drop a Blender GLB with a baked `run` clip into
+  `public/models/` and follow the swap block in `components/Spark.jsx`
+  (`useGLTF` + `useAnimations`, scrub clip time by distance).
+- **Feel / cadence:** edit the `trackEase` bezier in `lib/ease.js`.
 - **Run length:** `TRACK_LENGTH` in `lib/constants.js` + `.scroll-spacer` height
   in `app/globals.css`.
-- **Look:** materials are plain PBR; swap to `meshMatcapMaterial` for the cheap,
-  art-directed matcap shading TRACK uses, or add custom GLSL.
+- **Palette:** the accent (`--accent` in `globals.css`) and the emissive colors in
+  `Corridor.jsx` / `Spark.jsx` / `Background.jsx`.
+- **Glow strength:** `Bloom` `intensity` / `luminanceThreshold` in `PostFX.jsx`.
+
+## Deploy
+
+`npm run build` emits a fully static `out/`. Drop it behind nginx, an S3/CDN
+bucket, GitHub Pages, or any static host — no server runtime needed.
 
 ## Notes
 
-This is a from-scratch educational starter inspired by publicly observable
-techniques. It ships no assets from hirotos.com.
+Educational starter inspired by publicly observable techniques. Ships no assets
+from hirotos.com.
