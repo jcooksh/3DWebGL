@@ -19,3 +19,7 @@ yarn-error.log*
 
 # claude code session data
 /.claude/
+
+# agent workspace + regenerable screenshot captures (scripts/shoot.mjs)
+/.freebuff/
+/shots/

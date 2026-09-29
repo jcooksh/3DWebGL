@@ -81,7 +81,32 @@ body {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
   line-height: 0.92;
-  text-shadow: 0 0 28px rgba(255, 120, 80, 0.35);
+  text-shadow:
+    0 0 28px rgba(255, 120, 80, 0.35),
+    0 0 90px rgba(255, 85, 51, 0.18);
+  position: relative;
+  z-index: 1;
+}
+
+/* ghost split numeral sliding behind the stopwatch */
+.hud__split {
+  position: absolute;
+  top: 1.05rem;
+  left: 1.6rem;
+  width: 14ch;
+  height: 8px;
+  background: linear-gradient(90deg, rgba(255,85,51,0.22), transparent 70%);
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.hud__pace {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  opacity: 0.5;
+  margin-top: 0.45rem;
+  transition: color 0.3s ease;
 }
 
 .hud__dist {
@@ -124,10 +149,11 @@ body {
   font-family: var(--display);
   font-size: clamp(2.4rem, 9vw, 7rem);
   font-weight: 400;
-  letter-spacing: 0.005em;
   line-height: 0.94;
   text-transform: uppercase;
-  text-shadow: 0 0 40px rgba(255, 110, 70, 0.4);
+  text-shadow:
+    0 0 40px rgba(255, 110, 70, 0.4),
+    0 0 120px rgba(255, 85, 51, 0.25);
 }
 
 .hud__quote-who {
@@ -148,6 +174,19 @@ body {
   transform: scaleX(0);
   background: linear-gradient(90deg, var(--accent), #ffd0a0);
   box-shadow: 0 0 16px rgba(255, 85, 51, 0.7);
+}
+
+/* faint tick marks above the progress bar */
+.hud__bar::before {
+  content: '';
+  position: absolute;
+  inset: -5px 0 auto 0;
+  height: 4px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.14) 0 1px,
+    transparent 1px 10vw
+  );
 }
 
 .hud__hint {

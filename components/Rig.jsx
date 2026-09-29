@@ -1,24 +1,43 @@
 'use client';
+import { useMemo } from 'react';
+import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { useProgress } from '@/lib/store';
-import { trackEase } from '@/lib/ease';
-import { TRACK_LENGTH } from '@/lib/constants';
+import { motion } from '@/lib/motion';
 
 /**
- * Camera chases the spark down the corridor. Easing comes from Lenis smoothing +
- * the bespoke CustomEase curve; the camera is then glued a fixed distance behind
- * the spark, with a touch of handheld sway for life.
+ * Camera presentation. Position/FOV/roll/shake layered on top of the shared
+ * motion state — no chase policy lives here anymore (that's lib/motion.js),
+ * only how the camera *feels*: sway, speed shake, FOV pull, banking roll.
  */
 export default function Rig() {
-  useFrame((state) => {
-    const d = trackEase(useProgress.getState().progress);
-    const sparkZ = -d * TRACK_LENGTH;
-    const cam = state.camera;
+  const lookAt = useMemo(() => new THREE.Vector3(), []);
 
-    cam.position.z = sparkZ + 6;
-    cam.position.x = Math.sin(d * 22) * 0.22;
+  useFrame((state) => {
+    const cam = state.camera;
+    const v = motion.velocity;
+    const d = motion.dist ?? 0;
+
+    cam.position.z = motion.camZ;
+    const sway = Math.sin(d * 22) * 0.22;
+    cam.position.x = sway;
     cam.position.y = 1.9 + Math.sin(d * 52) * 0.05;
-    cam.lookAt(0, 1.25, sparkZ - 1);
+
+    // speed shake: two incommensurate sin octaves
+    const t = state.clock.elapsedTime;
+    const shake = v * v * 0.045;
+    cam.position.x += Math.sin(t * 31.7) * shake;
+    cam.position.y += Math.sin(t * 24.3 + 1.7) * shake * 0.7;
+
+    // FOV pull: 46° at rest → 56° flat out
+    const fov = 46 + v * 10;
+    if (cam.fov !== fov) {
+      cam.fov = fov;
+      cam.updateProjectionMatrix();
+    }
+
+    lookAt.set(0, 1.25, motion.sparkZ - 1);
+    cam.lookAt(lookAt);
+    cam.rotation.z += Math.sin(d * 22) * 0.06 + v * 0.02 * Math.sin(t * 17.3);
   });
 
   return null;
